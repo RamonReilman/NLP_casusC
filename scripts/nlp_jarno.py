@@ -1,9 +1,6 @@
 from collections import Counter
 import pickle
 from typing import List, Tuple, Dict
-import os
-import re
-
 
 class BPETokenizer:
     def __init__(self):
@@ -17,11 +14,15 @@ class BPETokenizer:
 
     @staticmethod
     def read_file(path: str) -> List[List[str]]:
-        """Reads a .txt file, splits text into words, and tokenizes each word into characters."""
+        """
+        Reads a text file and returns a list of lists of tokens.
+        :param path: Path to the text file.
+        :return: List of lists of tokens.
+        """
         vocab = []
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
-                line = line.strip().lower()
+                line = line.strip().lower() # so there is no conflict
                 if not line:
                     continue
                 words = line.split()
@@ -30,7 +31,12 @@ class BPETokenizer:
         return vocab
 
     def get_stats(self, vocab: List[List[str]]) -> Counter:
-        """Counts the frequency of all adjacent token pairs."""
+        """
+        Gets statistics about the vocabulary. How many pairs are there giving a counter dict back
+        :param vocab: Vocabulary.
+        :return: Counter with pairs of tokens.
+        """
+        # a subclass of dict that's specially designed for counting hashable objects in Python
         counts = Counter()
         for tokens in vocab:
             for i in range(len(tokens) - 1):
@@ -39,7 +45,14 @@ class BPETokenizer:
         return counts
 
     def merge(self, tokens: List[str], best_pair: Tuple[str, str], new_token: str) -> List[str]:
-        """Performs one merge operation on a list of tokens."""
+        """
+        merge the tokens if they are equal to best pair. and return the results in the form of a list
+        that contains the tokens that are merged.
+        :param tokens: List of tokens.
+        :param best_pair: Tuple of two tokens.
+        :param new_token: New token.
+        :return: List of merged tokens.
+        """
         i = 0
         result = []
         token_len = len(tokens)
@@ -54,21 +67,27 @@ class BPETokenizer:
         return result
 
     def train(self, path: str, num_merges: int) -> Tuple[List, Dict]:
-        """Performs BPE training on the text file at 'path'."""
-        initial_vocab = self.read_file(path)  # Use the correct reader
+        """
+        reads the text input, clear the merges_order and merges_map. For the amount of merges
+        get the starts for the text. look in stats for the best pair using most_comon.
+        make the new_token the best pair and update the voacb
+        :param path: Path to the text file.
+        :param num_merges: Number of merges.
+        :return: List of merged tokens and merges_map.
+        """
+        initial_vocab = self.read_file(path)
         current_vocab = initial_vocab
 
         self.merges_order = []
         self.merges_map = {}
 
         for i in range(num_merges):
-            stats = self.get_stats(current_vocab)  # FIX: STATS CALCULATION ADDED
-
+            stats = self.get_stats(current_vocab)
             if not stats:
                 print(f"No more pairs to merge after {i} steps.")
                 break
 
-            best_pair, count = stats.most_common(1)[0]  # FIX: Corrected variable name from counts to count
+            best_pair, count = stats.most_common(1)[0]
             new_token = "".join(best_pair)
 
             self.merges_order.append(best_pair)
@@ -81,11 +100,17 @@ class BPETokenizer:
         return self.merges_order, self.merges_map
 
     def encode(self, tokens: List[str]) -> List[str]:
-        """Applies the learned merges to a list of tokens."""
+        """
+        Encodes a list of tokens. by looping over the pairs in merges_order.
+        then merging them repeatedly until no pairs are left
+        then return a list of merged tokens.
+
+        :param tokens: List of tokens.
+        :return: List of encoded tokens.
+        """
         current_tokens = tokens
 
-        # Loop through the merges in the exact order they were learned (from self)
-        for pair in self.merges_order:  # FIX: Removed redundant args and used self.merges_order
+        for pair in self.merges_order:
             new_token = self.merges_map[pair]
 
             # Use the merge function repeatedly until no more pairs are found
@@ -93,3 +118,46 @@ class BPETokenizer:
 
         return current_tokens
 
+    def decode(self, tokens: List[str]) -> str:
+        """
+        Decodes a list of tokens. by looping over the pairs in merges_order.
+
+        :param tokens:
+        :return:
+        """
+        text = " ".join(tokens)  # Join tokens with a space
+
+        # Iterate through the merges in REVERSE order
+        for pair in reversed(self.merges_order):
+            original_chars = pair[0] + " " + pair[1]  # e.g., "h e"
+            new_token = self.merges_map[pair]  # e.g., "he"
+
+            text = text.replace(new_token, original_chars)
+
+        return text.replace(" ", "")  # Remove spaces to get back the original clean text
+
+    def save_encoding(self, path: str):
+        """
+
+        :param path:
+        :return:
+        """
+        encoding_data = {
+            'merges_order': self.merges_order,
+            'merges_map': self.merges_map,
+        }
+        with open(path, "wb") as f:
+            pickle.dump(encoding_data, f)
+
+    def load_encoding(self, path: str):
+        """
+
+        :param path:
+        :return:
+        """
+        with open(path, "rb") as f:
+            encoding = pickle.load(f)
+
+        self.merges_order = encoding['merges_order']
+        self.merges_map = encoding['merges_map']
+        print(f"Loaded {len(self.merges_order)} merges from {path}")
