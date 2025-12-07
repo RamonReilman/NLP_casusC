@@ -1,6 +1,9 @@
 import argparse
 import pathlib
 
+from zmq.backend import second
+
+
 def to_path(path):
     pathed = pathlib.Path(path)
     if pathed.exists():
@@ -34,42 +37,47 @@ def read_file(path):
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
             if path.suffix == ".txt":
-                letters = [char for char in line.strip()]
-                file.extend(letters)
+                line = line.replace(" ", "_")
+                file.append([char for char in line.strip()])
             if path.suffix == ".enc":
 
                 line_split = line.strip().split(" ")
                 file.append((line_split[0], line_split[1]))
     return file
 
-def init_vocab(string):
-    return set(string)
-
-def init_freq(string):
-    vocab = {}
-    for letter in string:
-        if letter not in vocab:
-            vocab[letter] = 0
-        vocab[letter] += 1
+def init_vocab(corpus):
+    vocab = set(char for word in corpus for char in word)
     return vocab
 
-def find_highest_pair(tokens):
-    pairs_count = {}
-    n = len(tokens)
+def init_freq(corpus):
+    vocab = {}
+    for sentence in corpus:
+        for letter in sentence:
+            if letter not in vocab:
+                vocab[letter] = 0
+            vocab[letter] += 1
+    return vocab
 
-    for i in range(0, n-1):
-        first = tokens[i]
-        second = tokens[i+1]
-        combined = (first, second)
-        if first == ' ' or second == ' ':
-            continue
-        if combined not in pairs_count:
-            pairs_count[combined] = 0
-        pairs_count[combined] += 1
+def find_highest_pair(corpus):
+    pairs_count = {}
+
+    for sentence in corpus:
+        n_sentence = len(sentence)
+        for i in range(0, n_sentence-1):
+
+            first = sentence[i]
+            second = sentence[i+1]
+            combined = (first, second)
+            if first == ' ' or second == ' ':
+                continue
+            if combined not in pairs_count:
+                pairs_count[combined] = 0
+            pairs_count[combined] += 1
+
     if len(pairs_count) == 0:
         return None
     highest_pair_val = max(pairs_count.values())
-    highest_pair = max(pairs_count, key=pairs_count.get)
+    highest_pair = max(pairs_count.items(), key=lambda x: x[1])[0]
     return highest_pair, highest_pair_val
 
 def update_freq(freq, highest_pair):
@@ -87,25 +95,26 @@ def update_freq(freq, highest_pair):
 
     return freq
 
-def update_tokens(tokens, highest_pair):
-    highest_pair = f"{highest_pair[0][0]}{highest_pair[0][1]}"
-    new_tokens = []
-    n = len(tokens)
-    j = 0
-    for i in range(0, n-1):
-        if j >= n-1:
-            break
-        combines = f"{tokens[j]}{tokens[j+1]}"
-        if combines == highest_pair:
-            new_tokens.append(highest_pair)
-            j+=2
-        else:
-            new_tokens.append(tokens[j])
-            j+=1
-    if j < n:
-        new_tokens.append(tokens[-1])
+def update_corpus(corpus, highest_pair):
+    highest_pair = highest_pair[0]
+    new_corpus = []
+    n = len(corpus)
+    i = 0
+    for sentence in corpus:
+        n = len(sentence)
+        i = 0
+        temp_sentence = []
+        while i < n:
+            if i < n-1 and ((sentence[i],sentence[i+1]) == highest_pair):
 
-    return new_tokens
+                temp_sentence.append(f"{sentence[i]}{sentence[i+1]}")
+                i+=2
+            else:
+                temp_sentence.append(sentence[i])
+                i+=1
+        new_corpus.append(temp_sentence)
+    return new_corpus
+
 def update_vocab(new_token, vocab):
     vocab.add(f"{new_token[0][0]}{new_token[0][1]}")
     return vocab
@@ -116,32 +125,39 @@ def write_enc(merges, output):
         output = output / "output.enc"
     with open(output, "w", encoding="utf-8") as f:
         for merge1, merge2 in merges:
-            f.write(f"{merge1} {merge2}\n")
+            f.write(f"{merge1} {merge2} -> {merge1}{merge2}\n")
 
 
 def generate_enc(args):
-    tokens = read_file(args.txt_file)
-    vocab = init_vocab(tokens)
-    freq = init_freq(tokens)
+    corpus = read_file(args.txt_file)
+    print(corpus)
+    vocab = init_vocab(corpus)
+    freq = init_freq(corpus)
     tries = 0
     merges = []
-    while len(merges) < args.max_merges and tries < 1000.000:
-        highest_pair = find_highest_pair(tokens, )
+    while len(merges) < args.max_merges and tries < 100000:
+        highest_pair = find_highest_pair(corpus, )
         if highest_pair is None:
             break
-        tokens = update_tokens(tokens, highest_pair)
+        corpus = update_corpus(corpus, highest_pair)
+        print(f"Hihest pair: {highest_pair}")
+        print(f"Updated corpus: {corpus}")
         freq = update_freq(freq, highest_pair)
         vocab = update_vocab(highest_pair, vocab)
         merges.append(highest_pair[0])
         tries+=1
     write_enc(merges, args.output)
 
+def update_tokens_with_mergerules(tokens, rules):
+    i = 0
+    while i < len(tokens)-1:
+        pass
+
 def generate_toc(args):
     tokens = read_file(args.txt_file)
     enc = read_file(args.enc_file)
+    # generate tokens based on enc
 
-
-    print(tokens)
 def main():
     args = setup_parser().parse_args()
     print(args)
