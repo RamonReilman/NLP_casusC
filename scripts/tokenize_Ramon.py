@@ -1,8 +1,6 @@
 import argparse
 import pathlib
 
-from zmq.backend import second
-
 
 def to_path(path):
     pathed = pathlib.Path(path)
@@ -32,17 +30,16 @@ def setup_parser():
     return parser
 
 def read_file(path):
-    print(path)
-    file = []
+    file = [] if path.suffix == ".txt" else {}
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
+            line = line.strip()
             if path.suffix == ".txt":
                 line = line.replace(" ", "_")
-                file.append([char for char in line.strip()])
+                file.append([char for char in line])
             if path.suffix == ".enc":
-
-                line_split = line.strip().split(" ")
-                file.append((line_split[0], line_split[1]))
+                line_split = line.split(" ")
+                file[(line_split[0], line_split[1])] = line_split[-1]
     return file
 
 def init_vocab(corpus):
@@ -125,12 +122,19 @@ def write_enc(merges, output):
         output = output / "output.enc"
     with open(output, "w", encoding="utf-8") as f:
         for merge1, merge2 in merges:
-            f.write(f"{merge1} {merge2} -> {merge1}{merge2}\n")
+            f.write(f"{merge1} {merge2} {merge1}{merge2}\n")
 
+def write_tok(tokens, output):
+    output = pathlib.Path(output)
+    if output.is_dir():
+        output = output / "output.tok"
+
+    with open(output, "w", encoding="utf-8") as f:
+        for sentence in tokens:
+            f.write(" ".join(sentence))
 
 def generate_enc(args):
     corpus = read_file(args.txt_file)
-    print(corpus)
     vocab = init_vocab(corpus)
     freq = init_freq(corpus)
     tries = 0
@@ -140,27 +144,48 @@ def generate_enc(args):
         if highest_pair is None:
             break
         corpus = update_corpus(corpus, highest_pair)
-        print(f"Hihest pair: {highest_pair}")
-        print(f"Updated corpus: {corpus}")
         freq = update_freq(freq, highest_pair)
         vocab = update_vocab(highest_pair, vocab)
         merges.append(highest_pair[0])
         tries+=1
     write_enc(merges, args.output)
 
-def update_tokens_with_mergerules(tokens, rules):
-    i = 0
-    while i < len(tokens)-1:
-        pass
+def update_tokens_with_mergerules(corpus, rules):
+    new_corpus = []
+    for sentence in corpus:
+        changed = True
+        while changed:
+            changed = False
+            n = len(sentence)
+            i = 0
+            new_sentence = []
+            while i < n:
+
+                if i < n-1 and rules.get((sentence[i], sentence[i+1])) is not None:
+                    current_pair = (sentence[i], sentence[i + 1])
+                    new_sentence.append(rules.get(current_pair))
+                    i += 2
+                    changed = True
+                else:
+                    new_sentence.append(sentence[i])
+                    i+=1
+            sentence = new_sentence
+        new_corpus.append(new_sentence)
+    return new_corpus
 
 def generate_toc(args):
-    tokens = read_file(args.txt_file)
+    corpus = read_file(args.txt_file)
+    print(f"Corpus: {corpus}")
     enc = read_file(args.enc_file)
+    print(f"rules: {enc}")
+    tokens = update_tokens_with_mergerules(corpus, enc)
+    print(f"Tokens: {tokens}")
+    write_tok(tokens, args.output)
+
     # generate tokens based on enc
 
 def main():
     args = setup_parser().parse_args()
-    print(args)
     if args.subcommand == "generate-enc":
         generate_enc(args)
     elif args.subcommand == "generate-toc":
