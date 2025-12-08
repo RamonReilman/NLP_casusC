@@ -38,11 +38,19 @@ and easy to understand NLP model to be created.
 
 ### N-gram text generation
 
-N-gram is a consecutive series of n tokens e.g. ("Hello, This is an example text for the 
-text generation portion of this package") this can be turned into 1 gram, 2 gram, 3 gram etc (More grams means more training text needed
-for better accuracy). N-gram is a statistical model that calculates the change of the next possible token,
-it does this based of the previous n-tokens. The N-gram needs to be trained to be efficient and accurate
-this can be done by giving it a Corpus (a large structured collection of authentic text or speech data, like books, articles
+N-gram is a consecutive subsequence of N tokens, extracted from a text. Lets say we have this text: "Hello, This is an example"
+this can be turned into 
+
+- 1 gram (**Unigrams**) "Hello", "This", "is", "an", "example" 
+- 2 gram (**Bigrams**) "Hello This", "This is", "is an", "an example" 
+- 3 gram (**Trigrams**) "Hello This is", "This is an", "is an example" 
+(More grams means more training text needed for better accuracy). 
+
+An N-gram languague model is a statistical model that calculate the chacne of the next token.
+The model decides what the next token (word) should be based on the previous N-tokens.
+The larger the N value gets, the more context the model considers (This also means larger data input is needed).
+The N-gram model needs to be trained, this can be done by giving it a Corpus 
+(a large structured collection of authentic text or speech data, like books, articles
 etc. GeeksforGeeks, 2025a). In the case of our package we will pre-process this text to force everything to be lowercase
 and removing the punctuation and spaces.
 
