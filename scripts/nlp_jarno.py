@@ -1,6 +1,7 @@
-from collections import Counter
+from collections import Counter, defaultdict
 import pickle
 from typing import List, Tuple, Dict
+import random
 
 class BPETokenizer:
     def __init__(self):
@@ -11,6 +12,9 @@ class BPETokenizer:
         # Placeholder for final token-to-ID mapping (if needed later)
         self.id_to_token: Dict[int, str] = {}
         self.token_to_id: Dict[str, int] = {}
+
+        self.n = 3
+        self.ngram_model: Dict[Tuple, Counter] = {}
 
     @staticmethod
     def read_file(path: str) -> List[List[str]]:
@@ -161,3 +165,65 @@ class BPETokenizer:
         self.merges_order = encoding['merges_order']
         self.merges_map = encoding['merges_map']
         print(f"Loaded {len(self.merges_order)} merges from {path}")
+
+    def get_corpus_tokens(self, path: str) -> List[str]:
+        """
+        reads file, breaks into word
+        :param path:
+        :return:
+        """
+        all_tokens = []
+        with open(path, "r") as f:
+            for line in f:
+                line = line.strip().lower()
+                if not line:
+                    continue
+                words = line.split()
+
+                for word in words:
+                    char_tokens = list(word)
+
+                    bpe_tokens = self.encode(char_tokens)
+
+                    all_tokens.extend(bpe_tokens)
+        return all_tokens
+
+
+    def training_ngram_model(self, path: str, n: int = 3):
+        corpus = self.get_corpus_tokens(path)
+
+        self.n = n
+        self.ngram_model = defaultdict(Counter)
+
+        for i in range(len(corpus) - n + 1):
+            # The final token is the final element so no list out of index error
+            context = tuple(corpus[i:i + n - 1])
+
+            next_token = corpus[i + n - 1]
+
+            self.ngram_model[context][next_token] += 1
+
+    def generate_text(self, start_text: str, max_length: int = 50) -> str:
+
+        context_size = self.n -1
+
+        initial_char_tokens = list("".join(start_text.split()))
+        initial_bpe_tokens = self.encode(initial_char_tokens)
+
+        current_context = tuple(initial_bpe_tokens[-context_size:])
+        generated_tokens = list(current_context)
+
+        for i in range(max_length):
+            if current_context in self.ngram_model:
+                next_token_count = self.ngram_model[current_context]
+
+                tokens, weights = zip(*next_token_count.items())
+
+                next_token = random.choice(tokens, weights=weights, k=1)[0]
+
+                generated_tokens.append(next_token)
+
+                current_context = current_context[1:] + (next_token, )
+
+        final_text = self.decode(generated_tokens)
+        return final_text
