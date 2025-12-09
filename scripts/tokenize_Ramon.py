@@ -246,8 +246,8 @@ def generate_txt(args):
 
 
 
-def main():
-    args = setup_parser().parse_args()
+def main(args = None):
+    args = setup_parser().parse_args(args)
     if args.subcommand == "generate-enc":
         generate_enc(args)
     elif args.subcommand == "generate-toc":
