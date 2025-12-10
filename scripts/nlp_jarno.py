@@ -3,6 +3,7 @@ import pickle
 from typing import List, Tuple, Dict
 import random
 
+
 class BPETokenizer:
     def __init__(self):
         # Data structures for the BPE encoding
@@ -20,18 +21,19 @@ class BPETokenizer:
     def read_file(path: str) -> List[List[str]]:
         """
         Reads a text file and returns a list of lists of tokens.
-        :param path: Path to the text file.
-        :return: List of lists of tokens.
         """
         vocab = []
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
-                line = line.strip().lower() # so there is no conflict
+                line = line.strip().lower()
                 if not line:
                     continue
+                # NIEUW/FIX: Hier zou je idealiter een </w> token toevoegen of spaties
+                # anders behandelen om de zinstructuur te behouden.
+                # Voor nu laten we het zoals het was in jouw originele code.
                 words = line.split()
                 for word in words:
-                    vocab.append(list(word))  # Correctly saves as a list of character tokens
+                    vocab.append(list(word))
         return vocab
 
     def get_stats(self, vocab: List[List[str]]) -> Counter:
@@ -166,64 +168,41 @@ class BPETokenizer:
         self.merges_map = encoding['merges_map']
         print(f"Loaded {len(self.merges_order)} merges from {path}")
 
-    def get_corpus_tokens(self, path: str) -> List[str]:
-        """
-        reads file, breaks into word
-        :param path:
-        :return:
-        """
-        all_tokens = []
-        with open(path, "r") as f:
-            for line in f:
-                line = line.strip().lower()
-                if not line:
-                    continue
-                words = line.split()
 
-                for word in words:
-                    char_tokens = list(word)
-
-                    bpe_tokens = self.encode(char_tokens)
-
-                    all_tokens.extend(bpe_tokens)
-        return all_tokens
-
-
-    def training_ngram_model(self, path: str, n: int = 3):
-        corpus = self.get_corpus_tokens(path)
-
+class NgramModel:
+    def __init__(self, n: int):
         self.n = n
-        self.ngram_model = defaultdict(Counter)
+        self.model = Dict[Tuple[str, ...], Counter] = defaultdict(Counter)
 
-        for i in range(len(corpus) - n + 1):
-            # The final token is the final element so no list out of index error
-            context = tuple(corpus[i:i + n - 1])
 
-            next_token = corpus[i + n - 1]
+    def train(self, tokens: List[str]):
 
-            self.ngram_model[context][next_token] += 1
 
-    def generate_text(self, start_text: str, max_length: int = 50) -> str:
+        if len(tokens) < self.n:
+            return
 
-        context_size = self.n -1
+        for i in range(len(tokens) - self.n + 1):
+            context = tokens[i : i + self.n - 1]
+            next_token = tokens[i + self.n - 1]
+            self.model[context, next_token] += 1
 
-        initial_char_tokens = list("".join(start_text.split()))
-        initial_bpe_tokens = self.encode(initial_char_tokens)
+    def generate(self, length: int) -> List[str]:
 
-        current_context = tuple(initial_bpe_tokens[-context_size:])
-        generated_tokens = list(current_context)
+        current_context = random.choice(list(self.model.keys()))
+        output = list(current_context)
 
-        for i in range(max_length):
-            if current_context in self.ngram_model:
-                next_token_count = self.ngram_model[current_context]
+        for i in range(length):
 
-                tokens, weights = zip(*next_token_count.items())
+            if current_context in self.model:
+                possible_next = self.model[current_context]
+                tokens, counts = zip(*possible_next.items())
 
-                next_token = random.choice(tokens, weights=weights, k=1)[0]
+                next_token = random.choices(tokens, weights=counts, k=1)[0]
 
-                generated_tokens.append(next_token)
+            else:
+                next_token = random.choice(list(self.model.keys()))[0]
 
-                current_context = current_context[1:] + (next_token, )
+            output.append(next_token)
+            current_context = tuple(output[-(self.n - 1):])
+        return output
 
-        final_text = self.decode(generated_tokens)
-        return final_text
