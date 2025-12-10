@@ -40,7 +40,7 @@ def setup_parser():
 
 
 def read_file(path):
-    file = [] if path.suffix in (".txt", ".tok") else {}
+    file = []
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -49,7 +49,7 @@ def read_file(path):
                 file.append([char for char in line])
             if path.suffix == ".enc":
                 line_split = line.split(" ")
-                file[(line_split[0], line_split[1])] = line_split[-1]
+                file.append((line_split[0], line_split[1], line_split[2]))
             if path.suffix == ".tok":
                 line_split = line.split(" ")
                 file.append(line_split)
@@ -112,8 +112,6 @@ def update_freq(freq, highest_pair):
 def update_corpus(corpus, highest_pair):
     highest_pair = highest_pair[0]
     new_corpus = []
-    n = len(corpus)
-    i = 0
     for sentence in corpus:
         n = len(sentence)
         i = 0
@@ -172,38 +170,27 @@ def generate_enc(args):
     write_enc(merges, args.output)
 
 
-def update_tokens_with_mergerules(corpus, rules):
-    new_corpus = []
-    for sentence in corpus:
-        changed = True
-        while changed:
-            changed = False
-            n = len(sentence)
-            i = 0
+def update_tokens_with_mergerules(corpus, rules_ordered):
+    for first, second, merged in rules_ordered:
+        for i, sentence in enumerate(corpus):
             new_sentence = []
-            while i < n:
-                if i < n - 1:
-                    merge = get_merge(rules, sentence[i], sentence[i+1])
-                    if merge:
-                        new_sentence.append(rules.get((sentence[i], sentence[i + 1])))
-                        i += 2
-                        changed = True
-                        continue
+            skip = 0
+            for j in range(len(sentence)):
+                if skip:
+                    skip -= 1
+                    continue
+                if j < len(sentence) - 1 and sentence[j] == first and sentence[j+1] == second:
+                    new_sentence.append(merged)
+                    skip = 1
+                else:
+                    new_sentence.append(sentence[j])
+            corpus[i] = new_sentence
+    return corpus
 
-                new_sentence.append(sentence[i])
-                i += 1
-            sentence = new_sentence
-        new_corpus.append(new_sentence)
-    return new_corpus
 
 def get_merge(rules, s1, s2):
-    pair = (s1,s2)
-    if s1 in rules.keys():
-        return pair
-    elif pair in rules.keys():
-        return rules.get(pair)
-    return None
-
+    pair = (s1, s2)
+    return rules.get(pair)
 
 
 def generate_toc(args):
@@ -211,6 +198,7 @@ def generate_toc(args):
     enc = read_file(args.enc_file)
     tokens = update_tokens_with_mergerules(corpus, enc)
     write_tok(tokens, args.output)
+
 
 def write_txt(text, output):
     output = pathlib.Path(output)
@@ -245,8 +233,7 @@ def generate_txt(args):
     write_txt(n, args.output)
 
 
-
-def main(args = None):
+def main(args=None):
     args = setup_parser().parse_args(args)
     if args.subcommand == "generate-enc":
         generate_enc(args)
