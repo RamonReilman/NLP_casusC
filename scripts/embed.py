@@ -131,8 +131,12 @@ def main():
     vocab = create_vocab(tok_data)
     multi_hot_dict = multi_hot_encoding(vocab)
     X, Y = generate_x_y(multi_hot_dict, n_gram)
-    model = create_model(n_hl)
-    trained_model = train_model(model, X, Y)
+    try:
+        model = create_model(n_hl)
+        trained_model = train_model(model, X, Y)
+    except ValueError as _:
+        print("No n-gram generated, please increase the amount of merges in the .enc file and regenerate tokens")
+        return
     weights = get_weights(trained_model)
     embedding = get_embedding(vocab, weights)
     write_emb(embedding, output=args.output)
