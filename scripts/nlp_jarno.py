@@ -172,8 +172,7 @@ class BPETokenizer:
 class NgramModel:
     def __init__(self, n: int):
         self.n = n
-        self.model = Dict[Tuple[str, ...], Counter] = defaultdict(Counter)
-
+        self.model: Dict[Tuple[str, ...], Counter] = defaultdict(Counter)
 
     def train(self, tokens: List[str]):
 
@@ -182,9 +181,9 @@ class NgramModel:
             return
 
         for i in range(len(tokens) - self.n + 1):
-            context = tokens[i : i + self.n - 1]
+            context = tuple(tokens[i : i + self.n - 1])
             next_token = tokens[i + self.n - 1]
-            self.model[context, next_token] += 1
+            self.model[context][next_token] += 1
 
     def generate(self, length: int) -> List[str]:
 
