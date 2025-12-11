@@ -36,6 +36,8 @@ and easy to understand NLP model to be created.
 
 ### Tokenization
 
+Tokenisation is essential in Natural Language Processing.
+
 ### N-gram text generation
 
 N-gram is a consecutive subsequence of N tokens, extracted from a text. Lets say we have this text: "Hello, This is an example"
@@ -80,11 +82,60 @@ Where:
 
 _Note that making this formula bi gram is done by taking away $t_{i-2}$_
 
+### Bag of Words
+
+Text data needs to be converted to numbers so that a machine can use it and algorithms can understand it.
+One method to do so, is the Bag of Words model. It turns text like sentences, paragraphs or full documents of text into  a multidimensional numerical vector.
+It counts how often each word appears but then ignores the order of the words. The model does not care for order or the grammer, it focuses solely on counting how many times a word appears in the input (text, sentence, document etc.).
+
+The bag of words model can be used for a different amount of things, 
+like text classification, sentiment analysis and clustering (GeeksforGeeks, 2025).
+
+For Bag Of Words to work there are some key components.
+
+**Vocabulary** : Reading through a file and saving each unique word into a vocabulary.
+
+**Document as a Vector** : Each input file wll be represented as a vector. Each element show the frequency of the words from the vocabulary in that
+input file. The frequency of each word is used as a feature for the model. Shown in table 1 is an example of how this could look like.
+
+Example input: "Hello World, I love pizza"
+
+| Word       | Count (Frequency) |
+|------------|-------------------|
+| Hello      | 1                 |
+| World      | 1                 |
+| I          | 1                 |
+| love       | 1                 |
+| Hamburgers | 0                 |
+| Pizza      | 1                 |
+
+_Table 1: Input file vector example_
+
+An important step is **Pre-processing**, this means to process the text for unused characters in this case. 
+This means removing reading characters like questions mark and other non-word characters, Removing extra spaces and
+Converting the text to lowercase. 
+
+The next step is **Counting words**, here we make the table 1 example. This can be stored in a dataframe or a dictionary.
+The basis of this function comes down to: If it does not exist add word to the dictionary. If it does exist add 1 to the count of the word.
+
+The Last step is to select the vocabulary size, to manage the memory and computational complexity we limit the vocabulary to the top N (user chosen) most frequent words.
+These top N words are from across all input files (if more then one were given). This reduced vocabulary then forms the final feature set.
+
+Now u have the Top N most important words, these can be used for various machine learning related trainings.
+
+**Why use bag of words?**
+
+The model is simple, easily implementable and can be used for various natural language processing tasks. The results
+can be visualised making them easy to interpret as well.
+
+However, it comes of the cost of loosing context, and working wit large data sets can give efficiency issues.
 
 
+### Embedding
 
+## How to use this package
 
 # References
 
 - GeeksforGeeks. (2025a, juli 11). NLP | Wordlist Corpus. GeeksforGeeks. https://www.geeksforgeeks.org/nlp/nlp-wordlist-corpus/
-- 
+- GeeksforGeeks. (2025, 17 juli). Bag of words (BoW) model in NLP. GeeksforGeeks. https://www.geeksforgeeks.org/nlp/bag-of-words-bow-model-in-nlp/
