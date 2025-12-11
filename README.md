@@ -196,6 +196,42 @@ However, it comes of the cost of loosing context, and working wit large data set
 
 ## How to use this package
 
+**Commands**
+
+Commands for the tokenize function.
+
+| Subcommand   | Action | Argument | Flag / Syntax    | Type | Default      | Required? | Description                                              |
+|--------------|--------|----------|------------------|------|--------------|-----------|----------------------------------------------------------|
+| generate-enc | Train  | Input    | --txt_file       | Path | -            | Yes       | Path to the source .txt file used to learn the encoding. |
+|              |        | Output   | -o, --output     | Path | ./output.enc | No        | Path to save the generated .enc file.                    |
+|              |        | Config   | -m, --max_merges | Int  | 10           | No        | Maximum amount of merges (vocabulary size control).      |
+| generate-toc | Encode | Input    | --txt_file       | Path | -            | Yes       | Path to the .txt file you want to tokenize.              |
+|              |        | Input    | --enc_file       | Path | -            | Yes       | Path to the .enc file (rules) to use for tokenization.   |
+|              |        | Output   | -o, --output     | Path | ./output.tok | No        | Path to save the resulting token file.                   |
+| generate-txt | Decode | Input    | --tok_file       | Path | -            | Yes       | Path to the .tok file you want to decode back to text.   |
+|              |        | Input    | --enc_file       | Path | -            | Yes       | Path to the .enc file used to decode the tokens.         |
+|              |        | Output   | -o, --output     | Path | ./output.txt | No        | Path to save the reconstructed text file.                |
+
+Commands for the N-gram function
+
+| Argument | Flag / Syntax | Type    | Default | Required? | Description                                   |
+|----------|---------------|---------|---------|-----------|-----------------------------------------------|
+| Order    | -n, --order   | Int     | -       | Yes       | The order of the N-gram model (e.g., 3).      |
+| Input    | -i, --input   | Path(s) | -       | Yes       | One or more .tok files to use as source data. |
+| Output   | -o, --output  | Path    | -       | Yes       | Filename for the generated output .tok file.  |
+| Length   | -l, --length  | Int     | -       | Yes       | Total amount of tokens to generate.           |
+
+Commands for the embed function
+
+| Argument | Flag / Syntax   | Type | Default    | Required? | Description                                                         |
+|----------|-----------------|------|------------|-----------|---------------------------------------------------------------------|
+| Input    | -t, --tok       | Path | -          | Yes       | Path to the input .tok file.                                        |
+| Window   | -n, --ngram     | Int  | 2          | No        | Window size of the 2N+1 gram (context size).                        |
+| Output   | -o, --output    | Path | output.emb | No        | Path to write the resulting .emb file.                              |
+| Neurons  | -nn, --n_hidden | Int  | 5          | No        | Number of neurons in the hidden layer (dimension of the embedding). |
+
+
+
 # References
 
 - GeeksforGeeks. (2025a, juli 11). NLP | Wordlist Corpus. GeeksforGeeks. https://www.geeksforgeeks.org/nlp/nlp-wordlist-corpus/
