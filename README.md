@@ -41,7 +41,7 @@ It divides a text input into smaller subunits called tokens.
 These tokens are the basic units (like words, subwords, or characters) that machine learning models consume.
 It helps in improving the interpretability of text by different models (GeeksforGeeks, 2025a).
 
-![image-removebg-preview (5).png](..%2F..%2F..%2FDownloads%2Fimage-removebg-preview%20%285%29.png)
+![image_example_tokenizer](/imgs/image-removebg-preview%20(5).png)
 
 _Figure 1: Simpel Tokenizer example_
 
