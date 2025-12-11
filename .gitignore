@@ -209,3 +209,8 @@ __marimo__/
 scripts/test_texts/generation_text
 *.xml
 *.iml
+Casus*
+belangrijke_dingen.ipynb
+*.enc
+*.tok
+*.txt
