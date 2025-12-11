@@ -339,7 +339,6 @@ class Embedder:
                 tok_data_split.append(token.split("_"))
 
         tok_data = tok_data_split
-
         n_gram = self.create_ngrams(tok_data, n_ngram)
         vocab = self.create_vocab(tok_data)
         multi_hot = self.multi_hot_encoding(vocab)
