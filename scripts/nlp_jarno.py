@@ -3,6 +3,11 @@ import pickle
 from typing import List, Tuple, Dict
 import random
 
+import numpy as np
+from sklearn.neural_network import MLPClassifier
+
+from Tokenize import read_file
+
 
 class BPETokenizer:
     def __init__(self):
@@ -205,6 +210,110 @@ class NgramModel:
             current_context = tuple(output[-(self.n - 1):])
         return output
 
+
+class Embedder:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def create_ngrams(tokens, n):
+        n_gram = []
+        for sentence in tokens:
+            temp_gram = []
+            for idx, token in enumerate(sentence):
+                token_gram = []
+                if idx - n >= 0 and idx + n < len(sentence):
+                    for i in range(-n, n+1):
+                        token_gram.append(sentence[idx+i])
+                    temp_gram.append(token_gram)
+            n_gram.append(temp_gram)
+        return n_gram
+
+    @staticmethod
+    def generate_token_dict(vocab):
+        return {word: i for i, word in enumerate(vocab)}
+
+    @staticmethod
+    def multi_hot_encoding(vocab):
+        token_dict = Embedder.generate_token_dict(vocab)
+        multi_hot = np.zeros((len(vocab), len(vocab)))
+        for i in range(len(vocab)):
+            multi_hot[i][i] = 1
+
+        return {vocab[i]: multi_hot[i] for i in range(len(vocab))}
+
+    @staticmethod
+    def create_vocab(tokens):
+        vocab = sorted(list(set(token for sentence in tokens for token in sentence)))
+        return vocab
+
+    @staticmethod
+    def generate_x_y(multi_hot_dict, n_grams):
+        X = []
+        Y = []
+        for sentence in n_grams:
+            for gram in sentence:
+                temp_x = np.zeros(len(multi_hot_dict))
+                n = len(gram)
+                mid = math.floor(n/2)
+                Y.append(multi_hot_dict.get(gram[mid]))
+                for idx in range(n):
+                    if idx != mid:
+                        temp_x += multi_hot_dict.get(gram[idx])
+                X.append(np.clip(temp_x, 0, 1))
+        return X, Y
+
+    @staticmethod
+    def create_model(n_neurons):
+        return MLPClassifier(hidden_layer_sizes=(n_neurons,))
+
+    @staticmethod
+    def train(model, X, Y):
+        model.fit(X, Y)
+        return model
+
+    @staticmethod
+    def get_weights(model):
+        return model.coefs_[1].T
+
+    @staticmethod
+    def get_embedding(vocab, weights):
+        token_dict = Embedder.generate_token_dict(vocab)
+        return {token: weights[token_dict[token]] for token in vocab}
+
+    @staticmethod
+    def write_emb(embedding, output_path):
+        with open(output_path, "w") as f:
+            for token, vector in embedding.items():
+                line = token + "".join(f" {v}" for v in vector) + "\n"
+                f.write(line)
+
+    def embed(self, tok_file, n_ngram=2, n_hidden=5, output="output.emb"):
+        tok_data = read_file(pathlib.Path(tok_file))
+
+        tok_data_split = []
+        for sentence in tok_data:
+            for token in sentence:
+                tok_data_split.append(token.split("_"))
+
+        tok_data = tok_data_split
+
+        n_gram = self.create_ngrams(tok_data, n_ngram)
+        vocab = self.create_vocab(tok_data)
+        multi_hot = self.multi_hot_encoding(vocab)
+
+        X, Y = self.generate_x_y(multi_hot, n_gram)
+
+        try:
+            model = self.create_model(n_hidden)
+            trained_model = self.train(model, X, Y)
+        except ValueError:
+            print("No n-gram generated. Increase merges in the .enc file and regenerate tokens.")
+            return
+
+        weights = self.get_weights(trained_model)
+        embedding = self.get_embedding(vocab, weights)
+        self.write_emb(embedding, output)
 
 
 # ------------------------BagOfWords-------------------------------
