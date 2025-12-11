@@ -121,22 +121,27 @@ def main():
     tok_file = pathlib.Path(args.tok)
     n_ngram = args.ngram
     n_hl = args.n_hidden
+
     tok_data = read_file(tok_file)
+
     tok_data_split = []
     for sentence in tok_data:
         for token in sentence:
             tok_data_split.append(token.split("_"))
+
     tok_data = tok_data_split
     n_gram = create_ngrams(tok_data, n_ngram)
     vocab = create_vocab(tok_data)
     multi_hot_dict = multi_hot_encoding(vocab)
     X, Y = generate_x_y(multi_hot_dict, n_gram)
+
     try:
         model = create_model(n_hl)
         trained_model = train_model(model, X, Y)
     except ValueError as _:
         print("No n-gram generated, please increase the amount of merges in the .enc file and regenerate tokens")
         return
+
     weights = get_weights(trained_model)
     embedding = get_embedding(vocab, weights)
     write_emb(embedding, output=args.output)
