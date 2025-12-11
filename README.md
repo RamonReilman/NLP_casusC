@@ -157,7 +157,7 @@ For Bag Of Words to work there are some key components.
 **Vocabulary** : Reading through a file and saving each unique word into a vocabulary.
 
 **Document as a Vector** : Each input file wll be represented as a vector. Each element show the frequency of the words from the vocabulary in that
-input file. The frequency of each word is used as a feature for the model. Shown in table 2 is an example of how this could look like.
+input file. The frequency of each word is used as a feature for the model. Shown in table 3 is an example of how this could look like.
 
 Example input: "Hello World, I love pizza"
 
@@ -170,7 +170,7 @@ Example input: "Hello World, I love pizza"
 | Hamburgers | 0                 |
 | Pizza      | 1                 |
 
-_Table 2: Input file vector example_
+_Table 3: Input file vector example_
 
 An important step is **Pre-processing**, this means to process the text for unused characters in this case. 
 This means removing reading characters like questions mark and other non-word characters, Removing extra spaces and
@@ -178,6 +178,18 @@ Converting the text to lowercase.
 
 The next step is **Counting words**, here we make the table 1 example. This can be stored in a dataframe or a dictionary.
 The basis of this function comes down to: If it does not exist add word to the dictionary. If it does exist add 1 to the count of the word.
+
+**The different methods for counting words**
+
+| Method                                                       | What Does It Measure? | How Does It Work?                                                                  | Resulting Values                                                     | Key Advantage                                                               |
+|--------------------------------------------------------------|-----------------------|------------------------------------------------------------------------------------|----------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| 1. Multi-hot Encoding (Sometimes incorrectly called One-hot) | Presence              | Checks whether a token is or is not present in the document.                       | Sequence of 0 (not present) or 1 (present).                          | Simple and fast; preserves the length of the vocabulary.                    |
+| 2. Frequency Encoding (Term Frequency)                       | Frequency/Volume      | Counts how many times a token appears in the document.                             | Integers (raw counts) or Floats (fraction, percentage of the total). | Gives weight to the most important/frequent words within this document.     |
+| 3. TF-IDF (Term-Frequency Inverse-Document-Frequency)        | Importance/Relevance  | Weighs the frequency within this document against its rarity across all documents. | Float (a weighted score), often between 0 and $\approx$ 15.          | Assigns a high score to words that are unique and specific to the document. |
+
+_Table 4: different counting methods_
+Based on the following literature (GeeksforGeeks, 2025b), (GeeksforGeeks, 2025d), (GeeksforGeeks, 2025a).
+
 
 The Last step is to select the vocabulary size, to manage the memory and computational complexity we limit the vocabulary to the top N (user chosen) most frequent words.
 These top N words are from across all input files (if more then one were given). This reduced vocabulary then forms the final feature set.
@@ -212,6 +224,9 @@ Commands for the tokenize function.
 |              |        | Input    | --enc_file       | Path | -            | Yes       | Path to the .enc file used to decode the tokens.         |
 |              |        | Output   | -o, --output     | Path | ./output.txt | No        | Path to save the reconstructed text file.                |
 
+_Table 5: Commands for the tokenize function explained._
+
+
 Commands for the N-gram function
 
 | Argument | Flag / Syntax | Type    | Default | Required? | Description                                   |
@@ -220,6 +235,9 @@ Commands for the N-gram function
 | Input    | -i, --input   | Path(s) | -       | Yes       | One or more .tok files to use as source data. |
 | Output   | -o, --output  | Path    | -       | Yes       | Filename for the generated output .tok file.  |
 | Length   | -l, --length  | Int     | -       | Yes       | Total amount of tokens to generate.           |
+
+_Table 6: Commands for the N-gram function explained._
+
 
 Commands for the embed function
 
@@ -230,6 +248,7 @@ Commands for the embed function
 | Output   | -o, --output    | Path | output.emb | No        | Path to write the resulting .emb file.                              |
 | Neurons  | -nn, --n_hidden | Int  | 5          | No        | Number of neurons in the hidden layer (dimension of the embedding). |
 
+_Table 7: Commands for the embed function explained._
 
 
 # References
@@ -239,3 +258,6 @@ Commands for the embed function
 - Wikipedia contributors. (2025, 10 december). Bag-of-words model. Wikipedia. https://en.wikipedia.org/wiki/Bag-of-words_model
 - GeeksforGeeks. (2025b, augustus 27). BytePair Encoding (BPE) in NLP. GeeksforGeeks. https://www.geeksforgeeks.org/nlp/byte-pair-encoding-bpe-in-nlp/
 - GeeksforGeeks. (2025a, juli 11). Tokenization in NLP. GeeksforGeeks. https://www.geeksforgeeks.org/nlp/nlp-how-tokenizing-text-sentence-words-works/
+- GeeksforGeeks. (2025b, juli 12). Feature encoding techniques machine learning. GeeksforGeeks. https://www.geeksforgeeks.org/machine-learning/feature-encoding-techniques-machine-learning/
+- GeeksforGeeks. (2025d, augustus 13). Understanding TFIDF (Term FrequencyInverse Document Frequency). GeeksforGeeks. https://www.geeksforgeeks.org/machine-learning/understanding-tf-idf-term-frequency-inverse-document-frequency/
+- GeeksforGeeks. (2025a, juli 11). One hot encoding in machine learning. GeeksforGeeks. https://www.geeksforgeeks.org/machine-learning/ml-one-hot-encoding/
