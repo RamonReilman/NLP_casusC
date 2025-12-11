@@ -2,6 +2,9 @@ from collections import Counter, defaultdict
 import pickle
 from typing import List, Tuple, Dict
 import random
+import re
+from math import log
+from sklearn.naive_bayes import GaussianNB
 
 import numpy as np
 from sklearn.neural_network import MLPClassifier
@@ -358,32 +361,25 @@ class Bagofwords:
         X_encoded = []
 
         # convert strings to tokens
-        tokenise = Tokens(self.tokens)
         for x_i in X:
-            X_tokens.append(tokenise.string_to_tokens(x_i))
-
-        # count total amount of tokens if total count is 0 (hasn't been counted yet)
-        if sum(self.tot_counts.values()) == 0:
-            for x_i_token in X_tokens:
-                for token in x_i_token:
-                    self.tot_counts[token] = self.tot_counts[token] + 1
+            X_tokens.append(self.string_to_tokens(x_i))
 
         # use encoding based on given encoding type
+        local_counts = {i: 0 for i in self.tot_counts.keys()}
         for x_i_token in X_tokens:
-            local_counts = {i: 0 for i in self.tot_counts.keys()}
             for token in x_i_token:
                 local_counts[token] = local_counts[token] + 1
-            if self.encoding_type == "multi_hot":
-                X_encoded.append(self.multi_hot(local_counts))
-            elif self.encoding_type == "frequency":
-                X_encoded.append(self.frequency(local_counts))
-            elif self.encoding_type == "tf_idf":
-                X_encoded.append(self.tf_idf(local_counts))
+        if self.encoding_type == "multi_hot":
+            X_encoded = self.multi_hot(local_counts)
+        elif self.encoding_type == "frequency":
+            X_encoded = self.frequency(local_counts)
+        elif self.encoding_type == "tf_idf":
+            X_encoded = self.tf_idf(local_counts)
         return X_encoded
 
     @staticmethod
     def multi_hot(token_counts):
-        return [bool(count) for count in token_counts.values()]
+        return [int(bool(count)) for count in token_counts.values()]
 
     @staticmethod
     def frequency(token_counts):
@@ -396,11 +392,51 @@ class Bagofwords:
         return [(local_count / local_tot_count) * log(full_count / full_tot_count)
                 for full_count, local_count in zip(self.tot_counts.values(), local_token_counts.values())]
 
-    def fit(self, X, y):
-        self.model.fit(self.create_bag(X), y)
+    def fit(self, X):
+        """
+        fits data on given string of text (only necessary when using tf_idf)
+        :param X: long string to fit
+        """
+        X_tokens = []
 
-    def predict(self, X):
-        return self.model.predict(self.create_bag(X))
+        for x_i in X:
+            X_tokens.append(self.string_to_tokens(x_i))
+
+        #
+        for x_i_token in X_tokens:
+            for token in x_i_token:
+                self.tot_counts[token] = self.tot_counts[token] + 1
+
+    def string_to_tokens(self, input_string):
+        """
+        generates token list based on this class' tokens from given string
+        :param input_string: string to be converted to tokens
+        :return: list of integers holding the tokens
+        """
+        # uses string-to-token converter of tokenize_Stijn, replace later with usage of nlp
+        remaining_characters = input_string
+        current_token = len(self.tokens.values()) - 1
+        used_locations = []
+        token_output = []
+        while remaining_characters:
+            # regex to check if only in-between characters remain in the string
+            if not bool(re.compile(r'[^\n\t .,!?]').search(remaining_characters)):
+                break
+            found = remaining_characters.find(self.tokens[current_token])
+            if found == -1:
+                current_token -= 1
+            else:
+                # append the found token to the right location and replace the found token in the string with blank space
+                location = 0
+                while True:
+                    if location == len(used_locations) or found < used_locations[location]:
+                        used_locations.insert(location, found)
+                        token_output.insert(location, current_token)
+                        remaining_characters = (remaining_characters[:found] + " " * len(self.tokens[current_token]) +
+                                                remaining_characters[found + len(self.tokens[current_token]):])
+                        break
+                    location += 1
+        return token_output
 
     def __str__(self):
         return f"model: {self.model}, provided_tokens: {self.tokens}, counted tokens in trainset: {self.tot_counts}"
