@@ -8,172 +8,198 @@ import random
 import numpy as np
 from sklearn.neural_network import MLPClassifier
 
-from Tokenize import read_file
 
+import pathlib
 
 class BPETokenizer:
     def __init__(self):
-        # Data structures for the BPE encoding
-        self.merges_order: List[Tuple] = []  # List of pairs in the order they were learned
-        self.merges_map: Dict[Tuple[str, str], str] = {}  # Map: pair -> new_token
+        pass
 
-        # Placeholder for final token-to-ID mapping (if needed later)
-        self.id_to_token: Dict[int, str] = {}
-        self.token_to_id: Dict[str, int] = {}
-
-        self.n = 3
-        self.ngram_model: Dict[Tuple, Counter] = {}
 
     @staticmethod
-    def read_file(path: str) -> List[List[str]]:
-        """
-        Reads a text file and returns a list of lists of tokens.
-        """
-        vocab = []
+    def read_file(path):
+        file = []
+        path = pathlib.Path(path)
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
-                line = line.strip().lower()
-                if not line:
-                    continue
-                # NIEUW/FIX: Hier zou je idealiter een </w> token toevoegen of spaties
-                # anders behandelen om de zinstructuur te behouden.
-                # Voor nu laten we het zoals het was in jouw originele code.
-                words = line.split()
-                for word in words:
-                    vocab.append(list(word))
+                line = line.strip()
+                if path.suffix == ".txt":
+                    line = line.replace(" ", "_")
+                    file.append([char for char in line])
+                elif path.suffix == ".enc":
+                    split = line.split(" ")
+                    file.append((split[0], split[1], split[2]))
+                elif path.suffix == ".tok":
+                    file.append(line.split(" "))
+        return file
+
+    @staticmethod
+    def write_enc(merges, output):
+        output = pathlib.Path(output)
+        if output.is_dir():
+            output = output / "output.enc"
+        with open(output, "w", encoding="utf-8") as f:
+            for merge1, merge2 in merges:
+                f.write(f"{merge1} {merge2} {merge1}{merge2}\n")
+
+    @staticmethod
+    def write_tok(tokens, output):
+        output = pathlib.Path(output)
+        if output.is_dir():
+            output = output / "output.tok"
+        with open(output, "w", encoding="utf-8") as f:
+            for sentence in tokens:
+                f.write(" ".join(sentence) + "\n")
+
+    @staticmethod
+    def write_txt(text, output):
+        output = pathlib.Path(output)
+        if output.is_dir():
+            output = output / "output.txt"
+        with open(output, "w", encoding="utf-8") as f:
+            for line in text:
+                f.write("".join(line).replace("_", " ") + "\n")
+
+
+    @staticmethod
+    def init_vocab(corpus):
+        return set(char for word in corpus for char in word)
+
+    @staticmethod
+    def init_freq(corpus):
+        vocab = {}
+        for sentence in corpus:
+            for letter in sentence:
+                vocab[letter] = vocab.get(letter, 0) + 1
         return vocab
 
-    def get_stats(self, vocab: List[List[str]]) -> Counter:
-        """
-        Gets statistics about the vocabulary. How many pairs are there giving a counter dict back
-        :param vocab: Vocabulary.
-        :return: Counter with pairs of tokens.
-        """
-        # a subclass of dict that's specially designed for counting hashable objects in Python
-        counts = Counter()
-        for tokens in vocab:
-            for i in range(len(tokens) - 1):
-                pair = (tokens[i], tokens[i + 1])
-                counts[pair] += 1
-        return counts
+    @staticmethod
+    def find_highest_pair(corpus):
+        pairs_count = {}
+        for sentence in corpus:
+            for i in range(len(sentence) - 1):
+                a, b = sentence[i], sentence[i + 1]
+                if a == ' ' or b == ' ':
+                    continue
+                pair = (a, b)
+                pairs_count[pair] = pairs_count.get(pair, 0) + 1
 
-    def merge(self, tokens: List[str], best_pair: Tuple[str, str], new_token: str) -> List[str]:
-        """
-        merge the tokens if they are equal to best pair. and return the results in the form of a list
-        that contains the tokens that are merged.
-        :param tokens: List of tokens.
-        :param best_pair: Tuple of two tokens.
-        :param new_token: New token.
-        :return: List of merged tokens.
-        """
-        i = 0
-        result = []
-        token_len = len(tokens)
+        if not pairs_count:
+            return None
 
-        while i < token_len:
-            if i + 1 < token_len and (tokens[i], tokens[i + 1]) == best_pair:
-                result.append(new_token)
-                i += 2  # Skip the next token since it was just consumed
-            else:
-                result.append(tokens[i])
-                i += 1
-        return result
+        highest_pair = max(pairs_count.items(), key=lambda x: x[1])
+        return highest_pair[0], highest_pair[1]
 
-    def train(self, path: str, num_merges: int) -> Tuple[List, Dict]:
-        """
-        reads the text input, clear the merges_order and merges_map. For the amount of merges
-        get the starts for the text. look in stats for the best pair using most_comon.
-        make the new_token the best pair and update the voacb
-        :param path: Path to the text file.
-        :param num_merges: Number of merges.
-        :return: List of merged tokens and merges_map.
-        """
-        initial_vocab = self.read_file(path)
-        current_vocab = initial_vocab
+    @staticmethod
+    def update_freq(freq, highest_pair):
+        pair, count = highest_pair
+        merged = f"{pair[0]}{pair[1]}"
+        freq[merged] = count
+        for _ in range(count):
+            for j in range(2):
+                if pair[j] in freq:
+                    freq[pair[j]] -= 1
+                    if freq[pair[j]] == 0:
+                        freq.pop(pair[j])
+        return freq
 
-        self.merges_order = []
-        self.merges_map = {}
+    @staticmethod
+    def update_corpus(corpus, highest_pair):
+        pair = highest_pair[0]
+        new_corpus = []
+        for sentence in corpus:
+            temp = []
+            i = 0
+            while i < len(sentence):
+                if i < len(sentence) - 1 and (sentence[i], sentence[i + 1]) == pair:
+                    temp.append(sentence[i] + sentence[i + 1])
+                    i += 2
+                else:
+                    temp.append(sentence[i])
+                    i += 1
+            new_corpus.append(temp)
+        return new_corpus
 
-        for i in range(num_merges):
-            stats = self.get_stats(current_vocab)
-            if not stats:
-                print(f"No more pairs to merge after {i} steps.")
+    @staticmethod
+    def update_vocab(merge, vocab):
+        a, b = merge[0]
+        vocab.add(a + b)
+        return vocab
+
+    @staticmethod
+    def update_tokens_with_mergerules(corpus, rules):
+        for first, second, merged in rules:
+            for i, sentence in enumerate(corpus):
+                new_sentence = []
+                skip = 0
+                for j in range(len(sentence)):
+                    if skip:
+                        skip -= 1
+                        continue
+                    if j < len(sentence) - 1 and sentence[j] == first and sentence[j+1] == second:
+                        new_sentence.append(merged)
+                        skip = 1
+                    else:
+                        new_sentence.append(sentence[j])
+                corpus[i] = new_sentence
+        return corpus
+
+
+    def generate_enc(self, txt_file, max_merges=10, output="./output.enc"):
+        corpus = self.read_file(txt_file)
+        vocab = self.init_vocab(corpus)
+        freq = self.init_freq(corpus)
+
+        merges = []
+        tries = 0
+
+        while len(merges) < max_merges and tries < 100000:
+            highest = self.find_highest_pair(corpus)
+            if highest is None:
                 break
 
-            best_pair, count = stats.most_common(1)[0]
-            new_token = "".join(best_pair)
+            corpus = self.update_corpus(corpus, highest)
+            freq = self.update_freq(freq, highest)
+            vocab = self.update_vocab(highest, vocab)
+            merges.append(highest[0])
 
-            self.merges_order.append(best_pair)
-            self.merges_map[best_pair] = new_token
+            tries += 1
 
-            # Update the vocabulary for the next iteration
-            new_vocab = [self.merge(word_tokens, best_pair, new_token) for word_tokens in current_vocab]
-            current_vocab = new_vocab
+        self.write_enc(merges, output)
 
-        return self.merges_order, self.merges_map
+    def generate_toc(self, txt_file, enc_file, output="./output.tok"):
+        corpus = self.read_file(txt_file)
+        enc = self.read_file(enc_file)
+        tokens = self.update_tokens_with_mergerules(corpus, enc)
+        self.write_tok(tokens, output)
 
-    def encode(self, tokens: List[str]) -> List[str]:
-        """
-        Encodes a list of tokens. by looping over the pairs in merges_order.
-        then merging them repeatedly until no pairs are left
-        then return a list of merged tokens.
+    def generate_txt(self, enc_file, tok_file, output="./output.txt"):
+        enc = self.read_file(enc_file)
+        enc_map = {merged: (a, b) for (a, b, merged) in enc}
+        tokens = self.read_file(tok_file)
 
-        :param tokens: List of tokens.
-        :return: List of encoded tokens.
-        """
-        current_tokens = tokens
+        final = []
 
-        for pair in self.merges_order:
-            new_token = self.merges_map[pair]
+        for sentence in tokens:
+            changed = True
+            while changed:
+                changed = False
+                new_sentence = []
 
-            # Use the merge function repeatedly until no more pairs are found
-            current_tokens = self.merge(current_tokens, pair, new_token)
+                for tok in sentence:
+                    if tok in enc_map:
+                        left, right = enc_map[tok]
+                        new_sentence.extend([left, right])
+                        changed = True
+                    else:
+                        new_sentence.append(tok)
 
-        return current_tokens
+                sentence = new_sentence
 
-    def decode(self, tokens: List[str]) -> str:
-        """
-        Decodes a list of tokens. by looping over the pairs in merges_order.
+            final.append(sentence)
 
-        :param tokens:
-        :return:
-        """
-        text = " ".join(tokens)  # Join tokens with a space
+        self.write_txt(final, output)
 
-        # Iterate through the merges in REVERSE order
-        for pair in reversed(self.merges_order):
-            original_chars = pair[0] + " " + pair[1]  # e.g., "h e"
-            new_token = self.merges_map[pair]  # e.g., "he"
-
-            text = text.replace(new_token, original_chars)
-
-        return text.replace(" ", "")  # Remove spaces to get back the original clean text
-
-    def save_encoding(self, path: str):
-        """
-
-        :param path:
-        :return:
-        """
-        encoding_data = {
-            'merges_order': self.merges_order,
-            'merges_map': self.merges_map,
-        }
-        with open(path, "wb") as f:
-            pickle.dump(encoding_data, f)
-
-    def load_encoding(self, path: str):
-        """
-
-        :param path:
-        :return:
-        """
-        with open(path, "rb") as f:
-            encoding = pickle.load(f)
-
-        self.merges_order = encoding['merges_order']
-        self.merges_map = encoding['merges_map']
-        print(f"Loaded {len(self.merges_order)} merges from {path}")
 
 
 class NgramModel:
@@ -289,7 +315,7 @@ class Embedder:
                 f.write(line)
 
     def embed(self, tok_file, n_ngram=2, n_hidden=5, output="output.emb"):
-        tok_data = read_file(pathlib.Path(tok_file))
+        tok_data = BPETokenizer.read_file(pathlib.Path(tok_file))
 
         tok_data_split = []
         for sentence in tok_data:
