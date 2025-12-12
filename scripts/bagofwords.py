@@ -1,7 +1,5 @@
 from nlp_jarno import Bagofwords, BPETokenizer
-from sklearn.model_selection import train_test_split
 import sys
-from math import log
 
 
 def extract_abstracts(filepath):
@@ -20,27 +18,39 @@ def extract_abstracts(filepath):
 
 
 def write_bow(output_dict, output_file="./output.bow"):
+    """
+    write dictionary to .bow file
+    :param output_dict: dictionary with: paper_title: encripted list
+    :param output_file: filepath to write to
+    :return: genereates .bow file in format [paper_title]: encripted_numbers
+    """
     with open(output_file, "w") as output:
         for key in output_dict.keys():
             output.write("[" + key + "]: " + ", ".join(str(i) for i in list(output_dict[key])) + "\n")
 
 
 def get_tokens(text, max_merges=10):
+    """
+
+    :param text: list of text
+    :param max_merges: number of times merges take place
+    :return: token keys
+    """
+    tokenizer = BPETokenizer()
     corpus = text
-    vocab = BPETokenizer.init_vocab(corpus)
-    freq = BPETokenizer.init_freq(corpus)
+    vocab = tokenizer.init_vocab(corpus)
+    pair_count = tokenizer.generate_pair_count(corpus)
 
     merges = []
     tries = 0
 
-    while len(merges) < max_merges and tries < 100000:
-        highest = BPETokenizer.find_highest_pair(corpus)
+    for i in range(0, max_merges):
+        highest = tokenizer.find_highest_pair(pair_count)
         if highest is None:
             break
 
-        corpus = BPETokenizer.update_corpus(corpus, highest)
-        freq = BPETokenizer.update_freq(freq, highest)
-        vocab = BPETokenizer.update_vocab(highest, vocab)
+        corpus, pair_count = tokenizer.update_corpus(corpus, highest, pair_count)
+        vocab = tokenizer.update_vocab(highest, vocab)
         merges.append(highest[0])
 
         tries += 1
@@ -73,13 +83,17 @@ def main():
         extracted = extract_abstracts(inputfile)
         all_abstracts = all_abstracts + list(extracted.values())
         abstract_dicts_list.append(extracted)
+
     freq = get_tokens(all_abstracts, 100)
     token_input = {i: tok for i, tok in enumerate(freq)}
-    output = {}
+
     bag = Bagofwords(token_input, encoding_type)
+
     X = "".join("".join(all_chars) for all_chars in all_abstracts)
+
     bag.fit(X)
-    # loop through all
+    # loop through all abstacts and save them in output dict
+    output = {}
     for dict in abstract_dicts_list:
         for key in dict.keys():
             output[key] = bag.create_bag(dict[key])

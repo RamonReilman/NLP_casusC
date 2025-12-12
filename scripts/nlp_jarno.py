@@ -4,13 +4,13 @@ from typing import List, Tuple, Dict
 import random
 import re
 from math import log
-from sklearn.naive_bayes import GaussianNB
 
 import numpy as np
 from sklearn.neural_network import MLPClassifier
 
 
 import pathlib
+
 
 class BPETokenizer:
     def __init__(self):
@@ -73,23 +73,20 @@ class BPETokenizer:
             for letter in sentence:
                 vocab[letter] = vocab.get(letter, 0) + 1
         return vocab
-
     @staticmethod
-    def find_highest_pair(corpus):
-        pairs_count = {}
+    def generate_pair_count(corpus):
+        pair_counts = defaultdict(int)
         for sentence in corpus:
             for i in range(len(sentence) - 1):
-                a, b = sentence[i], sentence[i + 1]
-                if a == ' ' or b == ' ':
-                    continue
-                pair = (a, b)
-                pairs_count[pair] = pairs_count.get(pair, 0) + 1
+                pair_counts[(sentence[i], sentence[i+1])] += 1
+        return pair_counts
 
-        if not pairs_count:
+    @staticmethod
+    def find_highest_pair(pair_count):
+        if not pair_count:
             return None
+        return max(pair_count.items(), key=lambda x: x[1])
 
-        highest_pair = max(pairs_count.items(), key=lambda x: x[1])
-        return highest_pair[0], highest_pair[1]
 
     @staticmethod
     def update_freq(freq, highest_pair):
@@ -103,9 +100,26 @@ class BPETokenizer:
                     if freq[pair[j]] == 0:
                         freq.pop(pair[j])
         return freq
-
     @staticmethod
-    def update_corpus(corpus, highest_pair):
+    def update_pair_count(x,y,a,b,pair_counts):
+        ab = a+b
+        pair_counts[(a, b)] -= 1
+        if pair_counts[(a, b)] <= 0:
+            pair_counts.pop((a, b), None)
+        if x is not None:
+            pair_counts[(x, a)] = max(0, pair_counts.get((x, a), 0) - 1)
+        if y is not None:
+            pair_counts[(b, y)] = max(0, pair_counts.get((b, y), 0) - 1)
+
+        # increment new pairs
+        if x is not None:
+            pair_counts[(x, ab)] = pair_counts.get((x, ab), 0) + 1
+        if y is not None:
+            pair_counts[(ab, y)] = pair_counts.get((ab, y), 0) + 1
+        return pair_counts
+
+
+    def update_corpus(self, corpus, highest_pair, pair_count):
         pair = highest_pair[0]
         new_corpus = []
         for sentence in corpus:
@@ -113,22 +127,23 @@ class BPETokenizer:
             i = 0
             while i < len(sentence):
                 if i < len(sentence) - 1 and (sentence[i], sentence[i + 1]) == pair:
+                    x = temp[-1] if temp else None
+                    y = sentence[i + 2] if i + 2 < len(sentence) else None
+                    pair_count = self.update_pair_count(x,y,sentence[i],sentence[i+1], pair_count)
                     temp.append(sentence[i] + sentence[i + 1])
                     i += 2
                 else:
                     temp.append(sentence[i])
                     i += 1
             new_corpus.append(temp)
-        return new_corpus
+        return new_corpus, pair_count
 
-    @staticmethod
-    def update_vocab(merge, vocab):
+    def update_vocab(self, merge, vocab):
         a, b = merge[0]
         vocab.add(a + b)
         return vocab
 
-    @staticmethod
-    def update_tokens_with_mergerules(corpus, rules):
+    def update_tokens_with_mergerules(self, corpus, rules):
         for first, second, merged in rules:
             for i, sentence in enumerate(corpus):
                 new_sentence = []
@@ -146,32 +161,33 @@ class BPETokenizer:
         return corpus
 
 
-    def generate_enc(self, txt_file, max_merges=10, output="./output.enc"):
+    def generate_enc(self, txt_file, max_merges, output="./output.enc"):
+        print("Generating corpus and vocab")
         corpus = self.read_file(txt_file)
         vocab = self.init_vocab(corpus)
-        freq = self.init_freq(corpus)
-
+        pair_count = self.generate_pair_count(corpus)
         merges = []
-        tries = 0
 
-        while len(merges) < max_merges and tries < 100000:
-            highest = self.find_highest_pair(corpus)
+        print("Starting iteration")
+        for i in range(0, max_merges):
+            highest = self.find_highest_pair(pair_count)
             if highest is None:
                 break
 
-            corpus = self.update_corpus(corpus, highest)
-            freq = self.update_freq(freq, highest)
+            corpus, pair_count = self.update_corpus(corpus, highest, pair_count)
             vocab = self.update_vocab(highest, vocab)
             merges.append(highest[0])
 
-            tries += 1
-
+        print(f"Writing enc file to: {output}")
         self.write_enc(merges, output)
 
     def generate_toc(self, txt_file, enc_file, output="./output.tok"):
+        print("Loading corpus and enc file")
         corpus = self.read_file(txt_file)
         enc = self.read_file(enc_file)
+        print("Generating tokens")
         tokens = self.update_tokens_with_mergerules(corpus, enc)
+        print(f"Writing output to: {output}")
         self.write_tok(tokens, output)
 
     def generate_txt(self, enc_file, tok_file, output="./output.txt"):
@@ -326,7 +342,6 @@ class Embedder:
                 tok_data_split.append(token.split("_"))
 
         tok_data = tok_data_split
-
         n_gram = self.create_ngrams(tok_data, n_ngram)
         vocab = self.create_vocab(tok_data)
         multi_hot = self.multi_hot_encoding(vocab)
@@ -351,7 +366,6 @@ class Bagofwords:
     def __init__(self, tokens, encoding_type="multi_hot"):
         if encoding_type not in ["multi_hot", "frequency", "tf_idf"]:
             raise ValueError("encoding_type unknown: " + encoding_type)
-        self.model = GaussianNB()
         self.tokens = tokens
         self.tot_counts = {i: 0 for i in tokens.keys()}
         self.encoding_type = encoding_type
@@ -384,12 +398,13 @@ class Bagofwords:
     @staticmethod
     def frequency(token_counts):
         tot_count = sum(token_counts.values())
-        return [count / tot_count for count in token_counts.values()]
+        return [0 if count == 0 else count / tot_count for count in token_counts.values()]
 
     def tf_idf(self, local_token_counts):
         full_tot_count = sum(self.tot_counts.values())
         local_tot_count = sum(local_token_counts.values())
-        return [(local_count / local_tot_count) * log(full_count / full_tot_count)
+        return [0 if local_count == 0 or full_count == 0 else
+                (local_count / local_tot_count) * log(full_count / full_tot_count)
                 for full_count, local_count in zip(self.tot_counts.values(), local_token_counts.values())]
 
     def fit(self, X):
@@ -420,9 +435,9 @@ class Bagofwords:
         token_output = []
         while remaining_characters:
             # regex to check if only in-between characters remain in the string
-            if not bool(re.compile(r'[^\n\t .,!?]').search(remaining_characters)):
+            if not bool(re.compile(r'[^\n\t .,!?]').search(remaining_characters)) or current_token == -1:
                 break
-            found = remaining_characters.find(self.tokens[current_token])
+            found = remaining_characters.find(self.tokens[list(self.tokens.keys())[current_token]])
             if found == -1:
                 current_token -= 1
             else:
@@ -439,6 +454,6 @@ class Bagofwords:
         return token_output
 
     def __str__(self):
-        return f"model: {self.model}, provided_tokens: {self.tokens}, counted tokens in trainset: {self.tot_counts}"
+        return f"provided_tokens: {self.tokens}, counted tokens in trainset: {self.tot_counts}"
 
 
