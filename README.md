@@ -28,9 +28,6 @@ and easy to understand NLP model to be created.
 - N-gram text generation
 - Embeddings
 
-## System requirements and installation:
-
-## Usage:
 
 ## Background info 
 
