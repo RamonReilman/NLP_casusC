@@ -205,7 +205,41 @@ However, it comes of the cost of loosing context, and working wit large data set
 
 
 ### Embedding
+While a computer knows how to use and work with integers, floats and other numerical data it does not know how natural language works. Sentences and words are not defined by the existence of them, but in the context in which they are used.
+A computer simply does not understand this "freedom".
+We still want to use the computing power of computers to work with words or sentences (or tokens). This can be done via embedding.
 
+"A word embedding is a representation of a word" (“Word Embedding,” 2025)
+
+#### Why embedding?
+Words cannot be understood by a computer, but we can represent words, their usage and context via a "place" in the natural language space.
+This space, and the coordinates of the words, can be used to cluster certain words, contexts, or synonyms together. Giving the computer an "understanding" of these words.
+These can then be used for many things:
+
+- Biology based research into topics, and learning said topics
+- Generating summaries based on many articles and their abstracts
+
+and more!
+
+#### Implementation of embedding
+Our implementation of token-embedding relies on our tokenizer: [see here](#Tokenization). Generated token are read and stored into a list. Tokens that are made up of several words are split up to get a more "word-like" embedding. This is done to increase clustering, and also helps with filtering specific words.
+These tokens are transferred to a N2 + 1 gram. Which means that will generate a list with a word and the other N words (or tokens) surrounding it.
+This is done to place tokens within a context instead of alone. 
+
+A vocabulary is created, after the generation of the N2 + 1 grams. This vocabulary is a hashset of all tokens. Which is then used to generate a multi-hot-encoding matrix.
+
+Our implementation uses multi-hot-encoded data as an input to generate the embedding. Multi-hot-encoding is slighty different compared to one-hot-encoding. One-hot-encoding is a vector that contains 0, and a maximum of one "1". That being a vector that characterizes a word into integers.
+Our multi-hot-encoding works via the adding together of one-hot-encoded vectors, and clipping these between 0 and 1. This will generate a vector that characterizes the words in any given input sentence or n-gram.
+
+##### Training
+This multi-hot-encoding (without the middle word) will be given as an input to a MLPclassifier. This classifier has an input layer, the size of our vocabulary. 1 hidden layer with a given amount of neurons. And an output layer that gives the probability of a word given the n-gram.
+The classifier is then trained to generate fitting words based on the given n-gram. This is done by managing the weights and biases of the model.
+
+#### After training
+The weights of the hidden layer are extracted from the model. These weights are the embedding of our tokens. The values represent the tokens in language space, and can be used to cluster, plot, or reduce the dimension (via PCA).
+This is writen to a .emb file, with tokens and weights seperated by spaces.
+
+(“Word Embedding,” 2025; Word Embeddings in NLP, 23:05:21+00:00)
 ## How to use this package
 
 **Commands**
@@ -261,3 +295,5 @@ _Table 7: Commands for the embed function explained._
 - GeeksforGeeks. (2025b, juli 12). Feature encoding techniques machine learning. GeeksforGeeks. https://www.geeksforgeeks.org/machine-learning/feature-encoding-techniques-machine-learning/
 - GeeksforGeeks. (2025d, augustus 13). Understanding TFIDF (Term FrequencyInverse Document Frequency). GeeksforGeeks. https://www.geeksforgeeks.org/machine-learning/understanding-tf-idf-term-frequency-inverse-document-frequency/
 - GeeksforGeeks. (2025a, juli 11). One hot encoding in machine learning. GeeksforGeeks. https://www.geeksforgeeks.org/machine-learning/ml-one-hot-encoding/
+- Word embedding. (2025). In Wikipedia. https://en.wikipedia.org/w/index.php?title=Word_embedding&oldid=1323019878
+- Word Embeddings in NLP. (23:05:21+00:00). GeeksforGeeks. https://www.geeksforgeeks.org/nlp/word-embeddings-in-nlp/
