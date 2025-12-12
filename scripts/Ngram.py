@@ -2,7 +2,7 @@
 import argparse
 import sys
 import os
-from nlp_jarno import NgramModel
+from nlp_main_file import NgramModel
 
 
 def main():

@@ -1,4 +1,4 @@
-from nlp_jarno import Bagofwords, BPETokenizer
+from nlp_main_file import Bagofwords, BPETokenizer
 import sys
 
 

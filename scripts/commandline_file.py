@@ -2,7 +2,7 @@
 import argparse
 import os
 import sys
-from nlp_jarno import BPETokenizer, NgramModel
+from nlp_main_file import BPETokenizer, NgramModel
 
 def setup_parser():
     parser = argparse.ArgumentParser(

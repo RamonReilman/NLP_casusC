@@ -1,6 +1,6 @@
 import argparse
 import pathlib
-from nlp_jarno import BPETokenizer
+from nlp_main_file import BPETokenizer
 
 
 def to_path(path):

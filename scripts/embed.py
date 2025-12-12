@@ -1,6 +1,6 @@
 
 import pathlib
-from nlp_jarno import Embedder
+from nlp_main_file import Embedder
 import argparse
 
 def to_path(path):
