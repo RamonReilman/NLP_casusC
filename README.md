@@ -242,6 +242,11 @@ This is writen to a .emb file, with tokens and weights seperated by spaces.
 (“Word Embedding,” 2025; Word Embeddings in NLP, 23:05:21+00:00)
 ## How to use this package
 
+### Installation
+```shell
+pip3 install -r requirements.tx
+```
+
 **Commands**
 
 Commands for the tokenize function.
@@ -285,6 +290,14 @@ Commands for the embed function
 _Table 7: Commands for the embed function explained._
 
 
+## Used libraries
+
+|   Library  |                        Usage                        |
+|:----------:|:---------------------------------------------------:|
+|    Numpy   |               Fast, vector operations               |
+|   Seaborn  |                   Generating plots                  |
+| sklearn    | Contains the PCA, standard scalar and MLPclassifier |
+| adjustText |               To create text in plots               |
 # References
 
 - GeeksforGeeks. (2025a, juli 11). NLP | Wordlist Corpus. GeeksforGeeks. https://www.geeksforgeeks.org/nlp/nlp-wordlist-corpus/
