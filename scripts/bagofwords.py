@@ -31,7 +31,7 @@ def write_bow(output_dict, output_file="./output.bow"):
 
 def get_tokens(text, max_merges=10):
     """
-
+    get tokens from a given text.
     :param text: list of text
     :param max_merges: number of times merges take place
     :return: token keys
@@ -58,22 +58,42 @@ def get_tokens(text, max_merges=10):
     return vocab
 
 
+def extract_commandline():
+    """
+    extract commandline arguments from sys.argv
+    :return: encoding_type string of encoding type, list of input file paths, output file path
+    """
+    commandline_arguments = sys.argv[1:]
+    encoding_type = "multi_hot"
+    input_files = commandline_arguments
+    output_file = "output.bow"
+    # loop through commandline arguments to extract output and encoding_type
+    for i, argument in enumerate(commandline_arguments):
+        if argument == "-o" or argument == "--output":
+            output_file = commandline_arguments[i + 1]
+            input_files.remove(commandline_arguments[i + 1])
+            input_files.remove(commandline_arguments[i])
+        elif argument == "--encoding":
+            encoding_type = commandline_arguments[i + 1]
+            input_files.remove(commandline_arguments[i + 1])
+            input_files.remove(commandline_arguments[i])
+    return encoding_type, input_files, output_file
+
+
 def main():
     if sys.argv[1] == "--help" or sys.argv[1] == "-h":
         print("""
-        Usage: bagofwords.py encoding_type inputfile [inputfile] output.bow
+        Usage: bagofwords.py [--encoding ENCODING_TYPE] INPUTFILES [-o OUTPUT]
         
-        params:
-            encoding_type: [multi_hot | frequency | tf_idf]
-            inputfile = text file with each line having: [title]: text
-            output = .bow file with each line having: [title]: encoded string
+        options:
+            --encoding: type of encoding used options: [multi_hot | frequency | tf_idf]
+            INPUTFILES: path to inputfile(s)
+             -o --output path to write .bow file to (default: ./output.bow)
         """)
         sys.exit()
 
     # extract commandline arguments
-    encoding_type = sys.argv[1]
-    inputs = sys.argv[2:-1]
-    output_file = sys.argv[-1]
+    encoding_type, inputs, output_file = extract_commandline()
 
     all_abstracts = []
     abstract_dicts_list = []
